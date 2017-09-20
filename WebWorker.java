@@ -1,3 +1,4 @@
+
 /**
 * Web worker: an object of this class executes in its own new thread
 * to receive and respond to a single HTTP request. After the constructor
@@ -20,16 +21,47 @@
 *
 **/
 
+//put this link in firefox to load webpage (may need to modify "test.html")
+//http://localhost:8080/res/acc/test.html
+
 import java.net.Socket;
 import java.lang.Runnable;
 import java.io.*;
 import java.util.Date;
 import java.text.DateFormat;
 import java.util.TimeZone;
+import java.applet.Applet;
+import java.awt.*;
+import java.awt.image.*;
+import java.net.URL;
+import javax.imageio.*;
+
+//create array that is referencing image
+//os.write
+//how to display an image via binary
+//convert file to binary, do os.write on binary.
+//for image specifications requirement:
+//53 width
+//53 height
+//or 100x100
+
+//image is binary, dont read as line, work with fileinputstream
+//go inside loop and do i.read, everytime you read it, write it immediately.
+//collect them all and send as getByte
+
+//bufferedreader input filestream
+//while loop
+//read by fileinputstream
+//go in loop with bufferedreader r. Read, send each time.
+//test.jpg
+//byte array.
+//inputstream.length to assign the size of the byte array.
 
 public class WebWorker implements Runnable
 {
    String filePath;
+   String fileType;
+   BufferedImage img = null;
 
 private Socket socket;
 
@@ -54,7 +86,7 @@ public void run()
       InputStream  is = socket.getInputStream();
       OutputStream os = socket.getOutputStream();
       readHTTPRequest(is);
-      writeHTTPHeader(os,"text/html");
+      writeHTTPHeader(os,fileType);
       writeContent(os);
       os.flush();
       socket.close();
@@ -70,19 +102,28 @@ public void run()
 **/
 private void readHTTPRequest(InputStream is)
 {
+   
+
    String line = " ";
    BufferedReader r = new BufferedReader(new InputStreamReader(is));
    try {
    line = r.readLine();
    } catch (Exception e) {
          System.err.println("Request error: "+e);
-      } // end catch
+   } // end catch
    
-   // find filepath to read
+   //extract filepath to read
    String a[] = new String [3];
    a = line.split(" ");
    filePath = a[1];
+   System.out.println("filePath =========== " + filePath);
+
+   //extract the fileType from the filePath, store in fileType.
+   fileType = filePath.substring(filePath.lastIndexOf(".") + 1);
+   System.out.println("fileType =========== " + fileType);
+  
    filePath = "." + filePath;
+   
    
    return;
 }
@@ -93,6 +134,8 @@ private void readHTTPRequest(InputStream is)
 **/
 private void writeHTTPHeader(OutputStream os, String contentType) throws Exception
 {
+   //convert test1.jpg to binary data. os.write the binary data.
+   byte[] byteArray = new byte [100];
    Date d = new Date();
    DateFormat df = DateFormat.getDateTimeInstance();
    df.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -110,8 +153,6 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
    os.write((df.format(d)).getBytes());
    os.write("\n".getBytes());
    os.write("Server: Jon's very own server\n".getBytes());
-   //os.write("Last-Modified: Wed, 08 Jan 2003 23:11:55 GMT\n".getBytes());
-   //os.write("Content-Length: 438\n".getBytes()); 
    os.write("Connection: close\n".getBytes());
    os.write("Content-Type: ".getBytes());
    os.write(contentType.getBytes());
@@ -126,40 +167,66 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
 **/
 private void writeContent(OutputStream os) throws Exception
 {
-   String first = "";
+
+
+//if fileType == html, do everything from P1 assignment.
+//else, perform image file functionality.   
+
+if (fileType.equals("html")) {
+System.out.println("fileType===" + fileType);
+
+    
+   String content = "";
    BufferedReader r = new BufferedReader(new FileReader(filePath));
-   String b;
+   String newLine;
    while (true) {
       try {
-        // while (!r.ready()) {
-        //System.out.println("test");
-        //Thread.sleep(1);
-        //}
-         b = r.readLine();
-         if (b.equals("<cs371date>")) {
+
+         newLine = r.readLine();
+         if (newLine.equals("<cs371date>")) {
+            newLine = "9/13/17 \n";
+            content += newLine;
+         } 
          
-            b = "9/6/17 \n";
-            first += b;
-         
-         } // end if
-         
-         else if (b.equals("<cs371server>")) {
-         
-            b = "This is Kevin's Web Server for cs371 \n";
-            first += b;
-         
-         } // end if
+         else if (newLine.equals("<cs371server>")) {
+            newLine = "Kevin's Web Server for CS371 \n";
+            content += newLine;
+         } 
          
          else
-           first += b;         
-         System.err.println("Request line: ("+b+")");
-         if (b.length()==0) break;
+            content += newLine;         
+            System.err.println("Request line: ("+newLine+")");
+            if (newLine.length()==0) break;
       } catch (Exception e) {
          System.err.println("Request error: "+e);
          break;
       }
    } // end while
-   os.write(first.getBytes());
+   os.write(content.getBytes());
+   
+
+}//end if statement
+
+else 
+{
+//if this statement is reached, fileType is not html (must be an image file)
+
+//create a byteArray, fill byteArray with filePath contents.
+//perform a read and write on byteArray to write image bytes to WebServer.
+
+   byte byteArray[] = null;
+   FileInputStream stream = new FileInputStream(filePath);
+   File nFile = new File(filePath);
+   byteArray = new byte [(int)nFile.length()];
+   stream.read(byteArray);
+   stream.close();
+   os.write(byteArray);
+
+
+
+
+}//end else statement
+
 
 } // end writeContent
 
